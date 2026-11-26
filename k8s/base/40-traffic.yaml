@@ -1,0 +1,19 @@
+# Weighted traffic split (Traefik is the k3s default ingress controller).
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata: { name: taskapi-split, namespace: taskapi }
+spec:
+  weighted:
+    services:
+      - { name: taskapi-stable, port: 80, weight: 100 }
+      - { name: taskapi-canary, port: 80, weight: 0 }
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: { name: taskapi, namespace: taskapi }
+spec:
+  entryPoints: [web]
+  routes:
+    - match: PathPrefix(`/`)
+      kind: Rule
+      services: [{ name: taskapi-split, kind: TraefikService }]

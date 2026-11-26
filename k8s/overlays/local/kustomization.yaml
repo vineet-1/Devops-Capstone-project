@@ -1,0 +1,17 @@
+# Local/offline lab overlay: same manifests, images built locally by Ansible (no registry access).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [../../base]
+images:
+  - { name: ghcr.io/masterjod/taskapi, newName: taskapi, newTag: "1.1.0" }
+  - { name: postgres, newName: capstone/postgres, newTag: "16" }
+  - { name: prom/prometheus, newName: capstone/prometheus, newTag: v2.55.1 }
+  - { name: prom/alertmanager, newName: capstone/alertmanager, newTag: v0.27.0 }
+  - { name: grafana/loki, newName: capstone/loki, newTag: "3.3.2" }
+  - { name: grafana/promtail, newName: capstone/promtail, newTag: "3.3.2" }
+patches:
+  - target: { kind: Deployment }
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

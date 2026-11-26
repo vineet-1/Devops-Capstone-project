@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taskapi-config
+  namespace: taskapi
+data:
+  LOG_LEVEL: "INFO"
+  DB_HOST: "postgres.taskapi.svc.cluster.local"
+  DB_NAME: "tasks"
+---
+# Least-privilege identity for app pods: no API access, token not mounted
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: taskapi
+  namespace: taskapi
+automountServiceAccountToken: false
+# NOTE: Secret "taskapi-db" (username/password) is NOT stored in Git.
+# It is created at deploy time from the vault (OpenBao/Vault) by ansible/roles/secrets.

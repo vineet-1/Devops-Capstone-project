@@ -1,0 +1,9 @@
+# Platform config for the k3s-bundled Traefik: keep weighted routes valid while the canary has 0 pods.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata: { name: traefik, namespace: kube-system }
+spec:
+  valuesContent: |-
+    providers:
+      kubernetesCRD:
+        allowEmptyServices: true
