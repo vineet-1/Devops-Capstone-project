@@ -1,0 +1,16 @@
+- name: Apply all manifests (kustomize overlay)
+  ansible.builtin.command: kubectl apply -k {{ overlay }}
+  register: apply
+  changed_when: "'configured' in apply.stdout or 'created' in apply.stdout"
+- name: Wait for PostgreSQL
+  ansible.builtin.command: kubectl -n {{ namespace }} rollout status statefulset/postgres --timeout=180s
+  changed_when: false
+- name: Wait for application and monitoring rollouts
+  ansible.builtin.command: kubectl -n {{ item.ns }} rollout status {{ item.obj }} --timeout=180s
+  loop:
+    - { ns: "{{ namespace }}", obj: deployment/taskapi-stable }
+    - { ns: monitoring, obj: deployment/prometheus }
+    - { ns: monitoring, obj: deployment/alertmanager }
+    - { ns: monitoring, obj: deployment/loki }
+    - { ns: monitoring, obj: daemonset/promtail }
+  changed_when: false

@@ -1,0 +1,13 @@
+- name: Find Traefik ingress address
+  ansible.builtin.command: kubectl -n kube-system get svc traefik -o jsonpath={.spec.clusterIP}
+  register: traefik_ip
+  changed_when: false
+- name: Smoke test through the ingress
+  ansible.builtin.uri: { url: "http://{{ traefik_ip.stdout }}/readyz", return_content: true }
+  register: smoke
+  retries: 20
+  delay: 3
+  until: smoke.status == 200
+- name: Report
+  ansible.builtin.debug:
+    msg: "Platform is up. Ingress http://{{ traefik_ip.stdout }}  readyz={{ smoke.json }}"

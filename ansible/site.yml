@@ -1,0 +1,15 @@
+# Provision the whole platform from scratch, idempotently:
+#   ansible-playbook site.yml            (full run)
+#   ansible-playbook site.yml --tags deploy
+- name: DevOps capstone platform
+  hosts: k3s_server
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  roles:
+    - { role: preflight, tags: [preflight] }
+    - { role: k3s, tags: [k3s] }
+    - { role: images, tags: [images] }
+    - { role: secrets, tags: [secrets] }
+    - { role: deploy, tags: [deploy] }
+    - { role: verify, tags: [verify] }

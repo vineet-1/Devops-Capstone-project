@@ -1,0 +1,13 @@
+repo_root: "{{ playbook_dir }}/.."
+kubeconfig: /etc/rancher/k3s/k3s.yaml
+k3s_version: v1.31.4+k3s1
+app_version: "1.0.0"
+namespace: taskapi
+overlay: "{{ repo_root }}/k8s/overlays/local"
+vault_addr: http://127.0.0.1:8200
+tools_dir: /opt/capstone-tools
+releases:
+  prometheus: { version: "2.55.1", url: "https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz", checksum: "sha256:https://github.com/prometheus/prometheus/releases/download/v2.55.1/sha256sums.txt" }
+  alertmanager: { version: "0.27.0", url: "https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz", checksum: "sha256:https://github.com/prometheus/alertmanager/releases/download/v0.27.0/sha256sums.txt" }
+  loki: { version: "3.3.2", url: "https://github.com/grafana/loki/releases/download/v3.3.2/loki-linux-amd64.zip", checksum: "sha256:https://github.com/grafana/loki/releases/download/v3.3.2/SHA256SUMS" }
+  promtail: { version: "3.3.2", url: "https://github.com/grafana/loki/releases/download/v3.3.2/promtail-linux-amd64.zip", checksum: "sha256:https://github.com/grafana/loki/releases/download/v3.3.2/SHA256SUMS" }

@@ -1,0 +1,48 @@
+- name: Create tools directory
+  ansible.builtin.file: { path: "{{ tools_dir }}", state: directory, mode: "0755" }
+- name: Download monitoring/logging release archives (checksum verified)
+  ansible.builtin.get_url:
+    url: "{{ item.value.url }}"
+    checksum: "{{ item.value.checksum }}"
+    dest: "{{ tools_dir }}/{{ item.value.url | basename }}"
+    mode: "0644"
+  loop: "{{ releases | dict2items }}"
+  loop_control: { label: "{{ item.key }} {{ item.value.version }}" }
+- name: Unpack archives
+  ansible.builtin.unarchive:
+    src: "{{ tools_dir }}/{{ item.value.url | basename }}"
+    dest: "{{ tools_dir }}"
+    remote_src: true
+  loop: "{{ releases | dict2items }}"
+  loop_control: { label: "{{ item.key }}" }
+- name: Stage binaries into the image build context
+  ansible.builtin.copy:
+    src: "{{ tools_dir }}/{{ item }}"
+    dest: "{{ repo_root }}/docker/monitoring/{{ item | basename }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - prometheus-2.55.1.linux-amd64/prometheus
+    - prometheus-2.55.1.linux-amd64/promtool
+    - alertmanager-0.27.0.linux-amd64/alertmanager
+    - loki-linux-amd64
+    - promtail-linux-amd64
+- name: Build monitoring images
+  ansible.builtin.command: >
+    docker build -q -f {{ repo_root }}/docker/monitoring/Dockerfile.{{ item.name }}
+    -t capstone/{{ item.name }}:{{ item.tag }} {{ repo_root }}/docker/monitoring
+  loop:
+    - { name: prometheus, tag: v2.55.1 }
+    - { name: alertmanager, tag: v0.27.0 }
+    - { name: loki, tag: "3.3.2" }
+    - { name: promtail, tag: "3.3.2" }
+  changed_when: true
+- name: Build PostgreSQL image
+  ansible.builtin.command: docker build -q -t capstone/postgres:16 {{ repo_root }}/docker/postgres
+  changed_when: true
+- name: Build application image
+  ansible.builtin.command: >
+    docker build -q --build-arg BASE_IMAGE=capstone/ubuntu-python:24.04
+    --build-arg PIP_INSTALL_ARGS="--no-index --find-links=/vendor"
+    --build-arg APP_VERSION={{ app_version }} -t taskapi:{{ app_version }} {{ repo_root }}
+  changed_when: true

@@ -1,0 +1,10 @@
+- name: Check required CLI tools
+  ansible.builtin.command: "which {{ item }}"
+  loop: [docker, python3, bao, curl]
+  changed_when: false
+- name: Ensure Docker daemon is reachable
+  ansible.builtin.command: docker info --format '{{ "{{" }}.ServerVersion{{ "}}" }}'
+  register: docker_info
+  changed_when: false
+- name: Show Docker version
+  ansible.builtin.debug: { msg: "Docker server {{ docker_info.stdout }}" }
