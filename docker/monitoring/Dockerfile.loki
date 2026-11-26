@@ -1,0 +1,4 @@
+FROM capstone/busybox:1.36.1
+COPY loki-linux-amd64 /usr/bin/loki
+USER 10001
+ENTRYPOINT ["/usr/bin/loki"]
