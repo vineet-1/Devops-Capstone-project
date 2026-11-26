@@ -1,0 +1,4 @@
+# promtail is dynamically linked (glibc), so it needs a glibc base image
+FROM capstone/ubuntu-python:24.04
+COPY promtail-linux-amd64 /usr/bin/promtail
+ENTRYPOINT ["/usr/bin/promtail"]

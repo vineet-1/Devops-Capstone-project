@@ -1,0 +1,47 @@
+# Recoverability: scheduled logical backups of PostgreSQL to a dedicated volume (keep 7).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: db-backups, namespace: taskapi }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: db-backup, namespace: taskapi }
+spec:
+  schedule: "0 */6 * * *"           # RPO <= 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata: { labels: { app: db-backup } }
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext: { fsGroup: 999 }
+          containers:
+            - name: pg-dump
+              image: postgres:16-alpine
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -e   # a failed pg_dump must fail the job, never write an empty backup
+                  # new pod IPs are admitted by the NetworkPolicy after a short delay: wait for the DB
+                  for i in $(seq 1 30); do pg_isready -q -h postgres && break; sleep 2; done
+                  F=/backups/tasks_$(date +%Y%m%d_%H%M%S).sql.gz
+                  pg_dump -h postgres -U "$PGUSER" -d tasks -f "${F%.gz}"   # no pipe: errors are not masked
+                  gzip "${F%.gz}"
+                  sha256sum "$F" | sed 's#/backups/##' > "$F.sha256"
+                  ls -1t /backups/*.sql.gz | tail -n +8 | xargs -r rm -f
+                  [ "$(gunzip -c "$F" | grep -c 'CREATE TABLE')" -ge 1 ] || { echo "backup verification failed"; exit 1; }
+                  echo "backup written and verified: $F ($(wc -c < "$F") bytes)"
+              env:
+                - { name: PGUSER, valueFrom: { secretKeyRef: { name: taskapi-db, key: username } } }
+                - { name: PGPASSWORD, valueFrom: { secretKeyRef: { name: taskapi-db, key: password } } }
+              resources: { limits: { cpu: 500m, memory: 256Mi } }
+              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+              volumeMounts: [{ name: backups, mountPath: /backups }]
+          volumes: [{ name: backups, persistentVolumeClaim: { claimName: db-backups } }]

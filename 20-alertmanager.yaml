@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: alertmanager-config, namespace: monitoring }
+data:
+  alertmanager.yml: |
+    route:
+      receiver: oncall
+      group_by: [alertname, track]
+      group_wait: 10s
+      repeat_interval: 1h
+    receivers:
+      - name: oncall
+        # Production: slack_configs / email_configs / pagerduty_configs with secrets from the vault
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: alertmanager, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: alertmanager } }
+  template:
+    metadata: { labels: { app: alertmanager } }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 65534 }
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.27.0
+          command: ["/bin/alertmanager"]
+          args: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+          ports: [{ containerPort: 9093 }]
+          resources: { limits: { memory: 128Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts:
+            - { name: config, mountPath: /etc/alertmanager }
+            - { name: data, mountPath: /alertmanager }
+      volumes:
+        - { name: config, configMap: { name: alertmanager-config } }
+        - { name: data, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: alertmanager, namespace: monitoring }
+spec:
+  selector: { app: alertmanager }
+  ports: [{ port: 9093, targetPort: 9093 }]

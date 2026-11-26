@@ -1,0 +1,5 @@
+# Offline-lab images: static upstream release binaries on busybox (official images used outside the lab)
+FROM capstone/busybox:1.36.1
+COPY prometheus promtool /bin/
+USER 65534
+ENTRYPOINT ["/bin/prometheus"]
